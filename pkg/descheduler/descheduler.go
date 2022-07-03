@@ -47,6 +47,7 @@ import (
 	"sigs.k8s.io/descheduler/pkg/descheduler/strategies/nodeutilization"
 	"sigs.k8s.io/descheduler/pkg/framework"
 	"sigs.k8s.io/descheduler/pkg/framework/plugins/removepodsviolatingnodetaints"
+	"sigs.k8s.io/descheduler/pkg/framework/plugins/removepodsviolatingtopologyspreadconstraint"
 	"sigs.k8s.io/descheduler/pkg/utils"
 )
 
@@ -248,7 +249,7 @@ func RunDeschedulerStrategies(ctx context.Context, rs *options.DeschedulerServer
 		"RemovePodsViolatingNodeTaints":               nil,
 		"RemovePodsHavingTooManyRestarts":             strategies.RemovePodsHavingTooManyRestarts,
 		"PodLifeTime":                                 strategies.PodLifeTime,
-		"RemovePodsViolatingTopologySpreadConstraint": strategies.RemovePodsViolatingTopologySpreadConstraint,
+		"RemovePodsViolatingTopologySpreadConstraint": nil,
 		"RemoveFailedPods":                            strategies.RemoveFailedPods,
 	}
 
@@ -384,6 +385,16 @@ func RunDeschedulerStrategies(ctx context.Context, rs *options.DeschedulerServer
 						status := pg.Deschedule(ctx, nodes)
 						if status != nil && status.Err != nil {
 							klog.V(1).ErrorS(err, "plugin finished with error", "pluginName", removepodsviolatingnodetaints.PluginName)
+						}
+					case "RemovePodsViolatingTopologySpreadConstraint":
+						pg, err := RemovePodsViolatingTopologySpreadConstraint2plugin(params, handle)
+						if err != nil {
+							klog.V(1).ErrorS(err, "unable to initialize a plugin", "pluginName", removepodsviolatingtopologyspreadconstraint.PluginName)
+							continue
+						}
+						status := pg.Deschedule(ctx, nodes)
+						if status != nil && status.Err != nil {
+							klog.V(1).ErrorS(err, "plugin finished with error", "pluginName", removepodsviolatingtopologyspreadconstraint.PluginName)
 						}
 					default:
 						f(context.WithValue(ctx, "strategyName", string(name)), rs.Client, strategy, nodes, podEvictor, evictorFilter, getPodsAssignedToNode)

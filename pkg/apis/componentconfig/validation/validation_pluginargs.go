@@ -19,6 +19,8 @@ package validation
 import (
 	"fmt"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"sigs.k8s.io/descheduler/pkg/apis/componentconfig"
 )
 
@@ -27,6 +29,26 @@ func ValidateRemovePodsViolatingNodeTaintsArgs(args *componentconfig.RemovePodsV
 	// At most one of include/exclude can be set
 	if args.Namespaces != nil && len(args.Namespaces.Include) > 0 && len(args.Namespaces.Exclude) > 0 {
 		return fmt.Errorf("only one of Include/Exclude namespaces can be set")
+	}
+
+	return nil
+}
+
+// ValidateRemovePodsViolatingTopologySpreadConstraintArgs validates RemovePodsViolatingTopologySpreadConstraint arguments
+func ValidateRemovePodsViolatingTopologySpreadConstraintArgs(args *componentconfig.RemovePodsViolatingTopologySpreadConstraintArgs) error {
+	if args.Namespaces != nil && len(args.Namespaces.Include) > 0 && len(args.Namespaces.Exclude) > 0 {
+		return fmt.Errorf("only one of Include/Exclude namespaces can be set")
+	}
+
+	if args.ThresholdPriority != nil && args.ThresholdPriorityClassName != "" {
+		return fmt.Errorf("only one of ThresholdPriority and thresholdPriorityClassName can be set")
+	}
+
+	if args.LabelSelector != nil {
+		_, err := metav1.LabelSelectorAsSelector(args.LabelSelector)
+		if err != nil {
+			return fmt.Errorf("failed to get label selectors from strategy's params: %+v", err)
+		}
 	}
 
 	return nil

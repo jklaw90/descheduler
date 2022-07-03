@@ -43,3 +43,22 @@ func RemovePodsViolatingNodeTaints2plugin(params *api.StrategyParameters, handle
 	}
 	return pg.(framework.DeschedulePlugin), nil
 }
+
+func RemovePodsViolatingTopologySpreadConstraint2plugin(params *api.StrategyParameters, handle *handleImpl) (framework.DeschedulePlugin, error) {
+	args := &componentconfig.RemovePodsViolatingTopologySpreadConstraintArgs{
+		Namespaces:                 params.Namespaces,
+		LabelSelector:              params.LabelSelector,
+		IncludeSoftConstraints:     params.IncludePreferNoSchedule,
+		ThresholdPriority:          params.ThresholdPriority,
+		ThresholdPriorityClassName: params.ThresholdPriorityClassName,
+		NodeFit:                    params.NodeFit,
+	}
+	if err := validation.ValidateRemovePodsViolatingTopologySpreadConstraintArgs(args); err != nil {
+		return nil, err
+	}
+	pg, err := removepodsviolatingnodetaints.New(args, handle)
+	if err != nil {
+		return nil, err
+	}
+	return pg.(framework.DeschedulePlugin), nil
+}
