@@ -70,16 +70,14 @@ func New(args runtime.Object, handle framework.Handle) (framework.Plugin, error)
 		return nil, fmt.Errorf("want args to be of type RemovePodsViolatingNodeTaintsArgs, got %T", args)
 	}
 
-	var includedNamespaces, excludedNamespaces sets.String
-	if removePodsViolatingTopologySpreadConstraintArgs.Namespaces != nil {
-		includedNamespaces = sets.NewString(removePodsViolatingTopologySpreadConstraintArgs.Namespaces.Include...)
-		excludedNamespaces = sets.NewString(removePodsViolatingTopologySpreadConstraintArgs.Namespaces.Exclude...)
+	if removePodsViolatingTopologySpreadConstraintArgs.Namespaces != nil &&
+		len(removePodsViolatingTopologySpreadConstraintArgs.Namespaces.Include) > 0 &&
+		len(removePodsViolatingTopologySpreadConstraintArgs.Namespaces.Exclude) > 0 {
+		return nil, fmt.Errorf("only one of Include/Exclude namespaces can be set")
 	}
 
 	podFilter, err := podutil.NewOptions().
 		WithFilter(handle.Evictor().Filter).
-		WithNamespaces(includedNamespaces).
-		WithoutNamespaces(excludedNamespaces).
 		WithLabelSelector(removePodsViolatingTopologySpreadConstraintArgs.LabelSelector).
 		BuildFilterFunc()
 	if err != nil {
@@ -145,8 +143,15 @@ func (d *RemovePodsViolatingTopologySpreadConstraint) Deschedule(ctx context.Con
 	klog.V(1).InfoS("Processing namespaces for topology spread constraints")
 	podsForEviction := make(map[*v1.Pod]struct{})
 
-	includedNamespaces := sets.NewString(d.args.Namespaces.Include...)
-	excludedNamespaces := sets.NewString(d.args.Namespaces.Exclude...)
+	var includedNamespaces, excludedNamespaces sets.String
+	if d.args.Namespaces != nil {
+		if len(d.args.Namespaces.Include) > 0 {
+			includedNamespaces = sets.NewString(d.args.Namespaces.Include...)
+		}
+		if len(d.args.Namespaces.Exclude) > 0 {
+			excludedNamespaces = sets.NewString(d.args.Namespaces.Exclude...)
+		}
+	}
 	// 1. for each namespace...
 	for _, namespace := range namespaces.Items {
 		if (len(includedNamespaces) > 0 && !includedNamespaces.Has(namespace.Name)) ||
